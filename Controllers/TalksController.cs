@@ -46,6 +46,7 @@ namespace CoreCodeCamp.Controllers
             try
             {
                 var talk = await _repository.GetTalkByMonikerAsync(moniker, id, true);
+                if (talk == null) return NotFound("Talk doesn't exist");
                 return _mapper.Map<TalkModel>(talk);
             }
             catch (Exception)
@@ -79,7 +80,7 @@ namespace CoreCodeCamp.Controllers
                         values: new { moniker, id = talk.TalkId });
 
                     return Created(url, _mapper.Map<TalkModel>(talk));
-                } 
+                }
                 else
                 {
                     return BadRequest("failed to save new Talk");
@@ -88,6 +89,65 @@ namespace CoreCodeCamp.Controllers
             catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, "Failed to post Talk");
+            }
+        }
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult< TalkModel>> Put(string moniker, int id, TalkModel model)
+        {
+            try
+            {
+                var talk = await _repository.GetTalkByMonikerAsync(moniker, id, true);
+                if (talk == null) return NotFound("Couldn't find the talk");
+
+                _mapper.Map(model, talk);
+
+                if(model.Speaker != null)
+                {
+                    var speaker = await _repository.GetSpeakerAsync(model.Speaker.SpeakerId);
+                    if (speaker != null)
+                    {
+                        talk.Speaker = speaker;
+                    }
+                }
+                if (await _repository.SaveChangesAsync())
+                {
+                    return _mapper.Map<TalkModel>(talk);
+                }
+                else
+                {
+                    return BadRequest("Failed to update database.;");
+                }
+
+            }
+            catch (Exception)
+            {
+
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to update Talk");
+            }
+        }
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(string moniker, int id)
+        {
+            try
+            {
+                var talk = await _repository.GetTalkByMonikerAsync(moniker, id);
+                if (talk == null) return NotFound("Could not find talk to delete");
+                _repository.Delete(talk);
+
+                if (await _repository.SaveChangesAsync())
+                {
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest("Failed to delete Talk");
+                }
+            }
+            catch (Exception)
+            {
+
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to delete Talk");
+
             }
         }
 
